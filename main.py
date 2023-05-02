@@ -28,7 +28,7 @@ rotation = 0
 # Calibration = 0,0,0,0 
 # -0.020294067534533390, 0.010147208517247985, -0.008228669112378906, 0.0077021799304268780
 # -0.004594864493066619, 0.004176107319918521, -0.003290743990377931, 0.0074860494245182485
-eyeball_min_x, eyeball_max_x, eyeball_min_y, eyeball_max_y = 0,0,0,0 
+eyeball_min_x, eyeball_max_x, eyeball_min_y, eyeball_max_y = -0.004594864493066619, 0.004176107319918521, -0.003290743990377931, 0.0074860494245182485
 ALLOW_BOUND_BOX_UPDATES = True
 
 cur_screen_x, cur_screen_y = 0,0
@@ -69,16 +69,7 @@ try:
             # cv2.circle(frame, (int(cur_r_eye_centroid_x * frame_w), int(cur_r_eye_centroid_y * frame_h)), 3, (0, 255, 0))
             cur_r_eye_centroid_x, cur_r_eye_centroid_y = new_r_eye_centroid_x, new_r_eye_centroid_y
             
-                
-                
-            r_eyeball_left_landmark = landmarks[473]
-            r_eyeball_angle_rad = math.atan2(cur_r_eye_centroid_y - r_eyeball_left_landmark.y, cur_r_eye_centroid_x - r_eyeball_left_landmark.x)
-            right_eyeball_bounding_box.set_rotation(r_eyeball_angle_rad)
-
-            # Draw right eyeball left landmark
-            cv2.circle(frame, (int(r_eyeball_left_landmark.x * frame_w), int(r_eyeball_left_landmark.y * frame_h)), 3, (255, 0, 0))
-
-            # Right Eyeball, create bounding box
+            # Right Eyeball Center, create bounding box
             r_eyeball_x_to_c, r_eyeball_y_to_c = 0, 0
             r_eyeball_center_landmark = landmarks[473]
 
@@ -87,6 +78,14 @@ try:
 
             r_eyeball_x_to_c, r_eyeball_y_to_c = r_eyeball_center_landmark.x - cur_r_eye_centroid_x, r_eyeball_center_landmark.y - cur_r_eye_centroid_y
 
+                
+            # Right Eyeball Left
+            r_eyeball_left_landmark = landmarks[476]
+            r_eyeball_angle_rad = math.atan2(r_eyeball_center_landmark.y - r_eyeball_left_landmark.y, r_eyeball_center_landmark.x - r_eyeball_left_landmark.x)
+            right_eyeball_bounding_box.set_rotation(r_eyeball_angle_rad)
+
+            # Draw right eyeball left landmark
+            cv2.circle(frame, (int(r_eyeball_left_landmark.x * frame_w), int(r_eyeball_left_landmark.y * frame_h)), 3, (255, 0, 0))
             # Create Bounding Box   
             if ALLOW_BOUND_BOX_UPDATES:
                 if r_eyeball_x_to_c < eyeball_min_x:
@@ -100,7 +99,7 @@ try:
             right_eyeball_bounding_box.set_bounding_box((eyeball_min_x, eyeball_min_y, eyeball_max_x, eyeball_max_y))
 
             # Show Bounding Box
-            right_eyeball_bounding_box.draw(frame, (0,100,0), (cur_r_eye_centroid_x, cur_r_eye_centroid_y))
+            right_eyeball_bounding_box.draw(frame, (0,255,0), (r_eyeball_center_landmark.x, r_eyeball_center_landmark.y))
 
             if eyeball_min_x != 0 and eyeball_max_x != 0 and eyeball_min_y != 0 and eyeball_max_y != 0:
                 screen_x, screen_y = 0, 0

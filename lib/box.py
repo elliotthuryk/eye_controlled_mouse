@@ -21,14 +21,14 @@ class Box:
     # end_x = offset_x + math.cos(angle) * (end_x - offset_x) - math.sin(angle) * (end_y - offset_y)
     # end_y = offset_y + math.sin(angle) * (end_x - offset_x) + math.cos(angle) * (end_y - offset_y)
 
-    cv2.rectangle(image, (start_x, start_y), (end_x, end_y), (0,100,0), 1)
+    #cv2.rectangle(image, (start_x, start_y), (end_x, end_y), (0,100,0), 1)
 
 
     pts = np.array([
-      this.rotate(offset, (start_x, start_y), angle),
-      this.rotate(offset, (start_x, end_y), angle),
-      this.rotate(offset, (end_x, end_y), angle),
-      this.rotate(offset, (end_x, start_y), angle)
+      this.rotate((offset_x * image_w, offset_y * image_h), (start_x, start_y), angle),
+      this.rotate((offset_x * image_w, offset_y * image_h), (start_x, end_y), angle),
+      this.rotate((offset_x * image_w, offset_y * image_h), (end_x, end_y), angle),
+      this.rotate((offset_x * image_w, offset_y * image_h), (end_x, start_y), angle)
       ], np.int32
     )
     pts = pts.reshape((-1,1,2))
