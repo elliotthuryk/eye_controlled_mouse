@@ -1,8 +1,9 @@
+from lib.box import Box
 import cv2, math, pyautogui, pydirectinput, time
 import mediapipe as mp
 import numpy as np
 cam = cv2.VideoCapture(0)
-face_mesh = mp.solutions.face_mesh.FaceMesh(refine_landmarks=True)
+face_mesh = mp.solutions.face_mesh.FaceMesh(refine_landmarks = True)
 pyautogui.FAILSAFE = False
 pydirectinput.FAILSAFE = False
 screen_w, screen_h = pyautogui.size()
@@ -21,17 +22,24 @@ def get_time(tag="", do_print = False):
     total_calls += 1
 
 cur_r_eye_centroid_x, cur_r_eye_centroid_y = 0, 0
+rotation = 0
 
 #Example sets: 
 # Calibration = 0,0,0,0 
 # -0.020294067534533390, 0.010147208517247985, -0.008228669112378906, 0.0077021799304268780
 # -0.004594864493066619, 0.004176107319918521, -0.003290743990377931, 0.0074860494245182485
-eyeball_min_x, eyeball_max_x, eyeball_min_y, eyeball_max_y = -0.004594864493066619, 0.004176107319918521, -0.003290743990377931, 0.0074860494245182485
-ALLOW_BOUND_BOX_UPDATES = False
+eyeball_min_x, eyeball_max_x, eyeball_min_y, eyeball_max_y = 0,0,0,0 
+ALLOW_BOUND_BOX_UPDATES = True
 
 cur_screen_x, cur_screen_y = 0,0
-EXIT_ON_OUT_OF_BOUNDS = False
+EXIT_ON_OUT_OF_BOUNDS = True
 
+# TODO:
+# - Cancel out head angle: Use 5 points on the eyeball to determine the offset angle of the eyeball, then rotate the bounding box by this offset
+# - Cancel out distance to camera: Have the bounding box scale along with the distance between the different points on the eyeball
+# - Potential noise reduction: Use both eyes instead of just one
+
+right_eyeball_bounding_box = Box(rotation, (eyeball_min_x, eyeball_min_y, eyeball_max_x, eyeball_max_y)) 
 
 try:
     while True:
@@ -50,50 +58,52 @@ try:
             r_eye_landmarks = np.array(landmarks)[r_eye_indexes]
             for id, landmark in enumerate(r_eye_landmarks):
                 cv2.circle(frame, (int(landmark.x * frame_w), int(landmark.y * frame_h)), 3, (0, 0, 255))
-                #cv2.putText(frame, str(r_eye_indexes[id]), (int(landmark.x * frame_w), int(landmark.y * frame_h)), cv2.FONT_HERSHEY_PLAIN, 0.8, (0, 0, 0), 1)
-                new_r_eye_centroid_x += landmark.x
-                new_r_eye_centroid_y += landmark.y
-            
+                # cv2.putText(frame, str(r_eye_indexes[id]), (int(landmark.x * frame_w), int(landmark.y * frame_h)), cv2.FONT_HERSHEY_PLAIN, 0.8, (0, 0, 0), 1)
+                new_r_eye_centroid_x, new_r_eye_centroid_y = new_r_eye_centroid_x + landmark.x, new_r_eye_centroid_y + landmark.y
+
             new_r_eye_centroid_x /= len(r_eye_landmarks)
             new_r_eye_centroid_y /= len(r_eye_landmarks)
-            #print("r_eye_centroid", new_r_eye_centroid_x, new_r_eye_centroid_y)
+            # print("r_eye_centroid", new_r_eye_centroid_x, new_r_eye_centroid_y)
 
-            cv2.circle(frame, (int(new_r_eye_centroid_x * frame_w), int(new_r_eye_centroid_y * frame_h)), 3, (255, 0, 0))
-            #cv2.circle(frame, (int(cur_r_eye_centroid_x * frame_w), int(cur_r_eye_centroid_y * frame_h)), 3, (0, 255, 0))
+            # cv2.circle(frame, (int(new_r_eye_centroid_x * frame_w), int(new_r_eye_centroid_y * frame_h)), 3, (255, 0, 0))
+            # cv2.circle(frame, (int(cur_r_eye_centroid_x * frame_w), int(cur_r_eye_centroid_y * frame_h)), 3, (0, 255, 0))
             cur_r_eye_centroid_x, cur_r_eye_centroid_y = new_r_eye_centroid_x, new_r_eye_centroid_y
+            
+                
+                
+            r_eyeball_left_landmark = landmarks[473]
+            r_eyeball_angle_rad = math.atan2(cur_r_eye_centroid_y - r_eyeball_left_landmark.y, cur_r_eye_centroid_x - r_eyeball_left_landmark.x)
+            right_eyeball_bounding_box.set_rotation(r_eyeball_angle_rad)
+
+            # Draw right eyeball left landmark
+            cv2.circle(frame, (int(r_eyeball_left_landmark.x * frame_w), int(r_eyeball_left_landmark.y * frame_h)), 3, (255, 0, 0))
 
             # Right Eyeball, create bounding box
             r_eyeball_x_to_c, r_eyeball_y_to_c = 0, 0
-            for id, landmark in enumerate(landmarks[473:474]):
-                cv2.circle(frame, (int(landmark.x * frame_w), int(landmark.y * frame_h)), 3, (0, 255, 0))
+            r_eyeball_center_landmark = landmarks[473]
 
-                r_eyeball_x_to_c, r_eyeball_y_to_c = landmark.x - cur_r_eye_centroid_x, landmark.y - cur_r_eye_centroid_y
-                #print("".join(["\r", str(r_eyeball_x_to_c), " ", str(r_eyeball_y_to_c)]))
+            # Draw right eyeball center point
+            cv2.circle(frame, (int(r_eyeball_center_landmark.x * frame_w), int(r_eyeball_center_landmark.y * frame_h)), 3, (0, 255, 0))
 
-                if ALLOW_BOUND_BOX_UPDATES:
-                    # Create Bounding Box
-                    if r_eyeball_x_to_c < eyeball_min_x:
-                        eyeball_min_x = r_eyeball_x_to_c
-                    if r_eyeball_x_to_c > eyeball_max_x:
-                        eyeball_max_x = r_eyeball_x_to_c
-                    if r_eyeball_y_to_c < eyeball_min_y:
-                        eyeball_min_y = r_eyeball_y_to_c
-                    if r_eyeball_y_to_c > eyeball_max_y:
-                        eyeball_max_y = r_eyeball_y_to_c
-                 
-            # Show Bounding Box   
-            r_eye_box_start = (int((cur_r_eye_centroid_x + eyeball_min_x) * frame_w), int((cur_r_eye_centroid_y + eyeball_min_y) * frame_h))
-            r_eye_box_end = (int((cur_r_eye_centroid_x + eyeball_max_x) * frame_w), int((cur_r_eye_centroid_y + eyeball_max_y) * frame_h))
-            #print("cur_r_eye_centroid_x, cur_r_eye_centroid_y", cur_r_eye_centroid_x, cur_r_eye_centroid_y)
-            #print("r_eyeball_x_to_c, r_eyeball_y_to_c", r_eyeball_x_to_c, r_eyeball_y_to_c)
-            #print("r_eye_box_start, r_eye_box_end", r_eye_box_start, r_eye_box_end)
-            cv2.rectangle(frame, r_eye_box_start, r_eye_box_end, (0,100,0), 1)
+            r_eyeball_x_to_c, r_eyeball_y_to_c = r_eyeball_center_landmark.x - cur_r_eye_centroid_x, r_eyeball_center_landmark.y - cur_r_eye_centroid_y
 
-            # Lower Left of screen
-            screen_x = 0
-            screen_y = 0
+            # Create Bounding Box   
+            if ALLOW_BOUND_BOX_UPDATES:
+                if r_eyeball_x_to_c < eyeball_min_x:
+                    eyeball_min_x = r_eyeball_x_to_c
+                if r_eyeball_x_to_c > eyeball_max_x:
+                    eyeball_max_x = r_eyeball_x_to_c
+                if r_eyeball_y_to_c < eyeball_min_y:
+                    eyeball_min_y = r_eyeball_y_to_c
+                if r_eyeball_y_to_c > eyeball_max_y:
+                    eyeball_max_y = r_eyeball_y_to_c
+            right_eyeball_bounding_box.set_bounding_box((eyeball_min_x, eyeball_min_y, eyeball_max_x, eyeball_max_y))
+
+            # Show Bounding Box
+            right_eyeball_bounding_box.draw(frame, (0,100,0), (cur_r_eye_centroid_x, cur_r_eye_centroid_y))
 
             if eyeball_min_x != 0 and eyeball_max_x != 0 and eyeball_min_y != 0 and eyeball_max_y != 0:
+                screen_x, screen_y = 0, 0
                 if r_eyeball_x_to_c > 0 and r_eyeball_y_to_c > 0:
                     per_x = r_eyeball_x_to_c / eyeball_max_x
                     per_y = r_eyeball_y_to_c / eyeball_max_y
@@ -126,8 +136,8 @@ try:
                         dist = min(math.sqrt(math.dist((cur_screen_x, cur_screen_y), (screen_x, screen_y))), 100)
                         cur_screen_x, cur_screen_y = cur_screen_x + dist * math.cos(angle_rad), cur_screen_y + dist * math.sin(angle_rad)
                         
-                    #pyautogui.moveTo(cur_screen_x, cur_screen_y, _pause=False)
-                    pydirectinput.moveTo(int(cur_screen_x), int(cur_screen_y), _pause=False)
+                    # pyautogui.moveTo(cur_screen_x, cur_screen_y, _pause=False)
+                    # pydirectinput.moveTo(int(cur_screen_x), int(cur_screen_y), _pause=False)
                     
             # l_eye = [landmarks[145], landmarks[159]]
             # for landmark in l_eye:
@@ -147,6 +157,6 @@ try:
         cv2.imshow('Eye Controlled Mouse', frame)
         cv2.waitKey(1)
 except Exception as e:
+    print("error: ", e)
     print("eyeball_min_x, eyeball_max_x, eyeball_min_y, eyeball_max_y", eyeball_min_x, eyeball_max_x, eyeball_min_y, eyeball_max_y)
     print("end report total and avg:", str(render_time_total).zfill(3), str(render_time_total / total_calls).zfill(3))
-    print("errored", e)
