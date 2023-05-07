@@ -37,6 +37,7 @@ EXIT_ON_OUT_OF_BOUNDS = True
 # TODO:
 # - Cancel out head angle: Use 5 points on the eyeball to determine the offset angle of the eyeball, then rotate the bounding box by this offset
 # - Cancel out distance to camera: Have the bounding box scale along with the distance between the different points on the eyeball
+#    - With this, make sure that the horz and vert are acting separately 
 # - Potential noise reduction: Use both eyes instead of just one
 
 right_eyeball_bounding_box = Box(rotation, (eyeball_min_x, eyeball_min_y, eyeball_max_x, eyeball_max_y)) 
